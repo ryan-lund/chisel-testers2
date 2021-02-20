@@ -1,16 +1,23 @@
 package chiseltest.legacy.backends.verilator
 
-import java.io.{File, FileWriter}
+import java.io.{BufferedReader, File, FileReader, FileWriter, PrintWriter}
 
 import chiseltest.backends.BackendExecutive
 import chiseltest.internal._
-import chisel3.{assert, Module}
+import chisel3.{Module, assert}
 import chisel3.experimental.DataMirror
 import chisel3.stage.{ChiselCircuitAnnotation, ChiselStage}
 import firrtl.annotations.ReferenceTarget
+import firrtl.ir.StructuralHash
 import firrtl.stage.RunFirrtlTransformAnnotation
 import firrtl.transforms.CombinationalPath
 import firrtl.util.BackendCompilationUtilities
+import java.nio.file.{Files, Paths}
+import java.security.MessageDigest
+
+import javax.xml.bind.DatatypeConverter
+import com.github.plokhotnyuk.jsoniter_scala.macros._
+import com.github.plokhotnyuk.jsoniter_scala.core._
 
 object VerilatorExecutive extends BackendExecutive {
   import firrtl._
@@ -39,14 +46,112 @@ object VerilatorExecutive extends BackendExecutive {
     System.gc()
 
     val targetDir = annotationSeq.collectFirst {
-      case firrtl.options.TargetDirAnnotation(t) => t
-    }.get
+        case firrtl.options.TargetDirAnnotation(t) => t
+      }.get
     val targetDirFile = new File(targetDir)
 
     val generatorAnnotation = chisel3.stage.ChiselGeneratorAnnotation(dutGen)
     val elaboratedAnno = (new chisel3.stage.phases.Elaborate).transform(annotationSeq :+ generatorAnnotation)
     val circuit = elaboratedAnno.collect { case x: ChiselCircuitAnnotation => x }.head.circuit
     val dut = getTopModule(circuit).asInstanceOf[T]
+
+    if (elaboratedAnno.contains(CachingAnnotation)) {
+      val highFirrtlAnnos = (new ChiselStage).run(
+        elaboratedAnno :+ RunFirrtlTransformAnnotation(new HighFirrtlEmitter)
+      )
+
+      val rawFirrtl = highFirrtlAnnos
+        .collect { case EmittedFirrtlCircuitAnnotation(e) => e.value}
+        .map(l => firrtl.Parser.parse(l))
+        .head
+
+      val sortedModuleHashStrings = new firrtl.stage.transforms.Compiler(targets = firrtl.stage.Forms.HighForm)
+        .transform(firrtl.CircuitState(rawFirrtl, Seq()))
+        .circuit
+        .modules
+        .map(m => m.name -> StructuralHash.sha256WithSignificantPortNames(m))
+        .sortBy(_._1)
+        .map(_._2.hashCode().toString) // TODO: Replace .hashCode().toString with .str
+
+      val sortedModuleMessageDigest = MessageDigest
+        .getInstance("SHA-256")
+        .digest(sortedModuleHashStrings
+          .toString()
+          .getBytes("UTF-8"))
+
+      val moduleHashHex = DatatypeConverter
+        .printHexBinary(sortedModuleMessageDigest)
+
+      val moduleHashFile = new File(targetDir, "module.hash")
+
+      val oldModuleHashHex = if (moduleHashFile.exists()) {
+        new BufferedReader(new FileReader(moduleHashFile)).readLine()
+      } else {
+        " "
+      }
+
+      val moduleWriter = new FileWriter(moduleHashFile)
+      moduleWriter.write(moduleHashHex)
+      moduleWriter.close()
+
+      // Hash the deterministic elements of elaboratedAnno for comparison, this should
+      // only catch if coverage or vcd flags change
+      val elaboratedAnnoString = elaboratedAnno
+        .toSeq
+        .filter(anno => !List("chisel3.stage.ChiselCircuitAnnotation", "chisel3.stage.DesignAnnotation", "firrtl.options.TargetDirAnnotation")
+          .contains(anno.getClass.toString.split(" ").last))
+        .map(anno => anno.toString)
+      val firrtlInfoString = Seq(firrtl.BuildInfo.toString)
+      val systemVersionString = Seq(System.getProperty("java.version"), scala.util.Properties.versionNumberString)
+
+      val elaboratedAnnoHashHex = DatatypeConverter
+        .printHexBinary(MessageDigest
+          .getInstance("SHA-256")
+          .digest((elaboratedAnnoString ++ firrtlInfoString ++ systemVersionString)
+            .toString
+            .getBytes("UTF-8")))
+
+      val annoHashFile = new File(targetDir, "anno.hash")
+
+      val oldElaboratedAnnoHashHex = if (annoHashFile.exists) {
+        new BufferedReader(new FileReader(annoHashFile)).readLine
+      } else {
+        " "
+      }
+
+      val elaboratedAnnoWriter = new FileWriter(annoHashFile)
+      elaboratedAnnoWriter.write(elaboratedAnnoHashHex)
+      elaboratedAnnoWriter.close()
+
+
+      if (moduleHashHex == oldModuleHashHex && elaboratedAnnoHashHex == oldElaboratedAnnoHashHex) { // Check if we have built a simulator with matching module and annotations
+        val portNames = DataMirror
+          .modulePorts(dut)
+          .flatMap {
+            case (name, data) =>
+              getDataNames(name, data).toList.map {
+                case (p, "reset") => (p, "reset")
+                case (p, "clock") => (p, "clock")
+                case (p, n) => (p, s"${circuit.name}.$n")
+                //          case (p, n) => (p, s"$n")
+              }
+          }
+          .toMap
+
+        val pathsJson = new BufferedReader(new FileReader(new File(targetDir, "paths.json"))).readLine()
+        val pathsCodec: JsonValueCodec[Seq[CombinationalPath]] = JsonCodecMaker.make
+        val paths = readFromArray(pathsJson.getBytes("UTF-8"))(pathsCodec)
+
+        val pathsAsData =
+          combinationalPathsToData(dut, paths, portNames, componentToName)
+
+        val commandJson = new BufferedReader(new FileReader(new File(targetDir, "command.json"))).readLine()
+        val commandCodec: JsonValueCodec[Seq[String]] = JsonCodecMaker.make
+        val command = readFromArray(commandJson.getBytes("UTF-8"))(commandCodec)
+
+        return new VerilatorBackend(dut, portNames, pathsAsData, command)
+      }
+    }
 
     // Create the header files that verilator needs
     CopyVerilatorHeaderFiles(targetDir)
@@ -59,15 +164,22 @@ object VerilatorExecutive extends BackendExecutive {
     // - TestCommandOverride
     // - CombinationalPath
     val compiledAnnotations = (new ChiselStage).run(
-      elaboratedAnno :+ RunFirrtlTransformAnnotation(new VerilogEmitter)
+      if (elaboratedAnno.contains(CachingAnnotation)) {
+        AnnotationSeq(elaboratedAnno.toSeq
+          .filter(anno => !anno.getClass.toString.split(" ").last.equals("firrtl.options.TargetDirAnnotation"))
+        :+ firrtl.options.TargetDirAnnotation(targetDir))
+      } else {
+        elaboratedAnno
+      } :+ RunFirrtlTransformAnnotation(new VerilogEmitter)
     )
 
     val cppHarnessFileName = s"${circuit.name}-harness.cpp"
     val cppHarnessFile = new File(targetDir, cppHarnessFileName)
     val cppHarnessWriter = new FileWriter(cppHarnessFile)
     val vcdFile = new File(targetDir, s"${circuit.name}.vcd")
+    val coverageDir = s"${targetDir}/logs"
     val emittedStuff =
-      VerilatorCppHarnessGenerator.codeGen(dut, vcdFile.toString, targetDir)
+      VerilatorCppHarnessGenerator.codeGen(dut, vcdFile.toString, coverageDir)
     cppHarnessWriter.append(emittedStuff)
     cppHarnessWriter.close()
 
@@ -135,6 +247,20 @@ object VerilatorExecutive extends BackendExecutive {
       .toMap
 
     val paths = compiledAnnotations.collect { case c: CombinationalPath => c }
+
+    if (elaboratedAnno.contains(CachingAnnotation)) {
+      // Cache paths as json as they depend on the compiledAnnotations
+      val pathsCodec: JsonValueCodec[Seq[CombinationalPath]] = JsonCodecMaker.make
+      val pathsWriter = new FileWriter(new File(targetDir, "paths.json"))
+      pathsWriter.write(new String(writeToArray(paths)(pathsCodec), "UTF-8"))
+      pathsWriter.close()
+
+      // Cache command
+      val commandCodec: JsonValueCodec[Seq[String]] = JsonCodecMaker.make
+      val commandWriter = new FileWriter(new File(targetDir, "command.json"))
+      commandWriter.write(new String(writeToArray(command)(commandCodec), "UTF-8"))
+      commandWriter.close()
+    }
 
     val pathsAsData =
       combinationalPathsToData(dut, paths, portNames, componentToName)
