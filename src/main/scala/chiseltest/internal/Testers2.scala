@@ -106,7 +106,15 @@ case object UserCoverageAnnotation extends TestOptionObject {
   )
 }
 
-
+case object CachingAnnotation extends TestOptionObject {
+  val options: Seq[ShellOption[_]] = Seq(
+    new ShellOption[Unit](
+      longOption = "t-use-caching",
+      toAnnotationSeq = _ => Seq(CachingAnnotation),
+      helpText = "caches built simulations when using Verilator"
+    )
+  )
+}
 
 trait BackendAnnotation extends TestOptionObject {
   self: Object =>
