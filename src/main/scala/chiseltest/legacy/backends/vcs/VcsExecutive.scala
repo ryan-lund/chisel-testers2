@@ -88,17 +88,6 @@ object VcsExecutive extends BackendExecutive {
       .getOrElse(Seq())
     val moreVcsCFlags = compiledAnnotations.collectFirst { case VcsCFlags(flagSeq) => flagSeq }
       .getOrElse(Seq())
-<<<<<<< HEAD
-    val coverageFlags = (compiledAnnotations collect {
-      case LineCoverageAnnotation => List("line")
-      case ToggleCoverageAnnotation => List("tgl")
-      case BranchCoverageAnnotation => List("branch")
-      case ConditionalCoverageAnnotation => List("cond")
-      case UserCoverageAnnotation => List("assert")
-      case StructuralCoverageAnnotation => List("line", "tgl", "branch", "cond")
-    }).flatten.distinct match {
-      case Nil => Seq()
-=======
     val coverageFlags = (compiledAnnotations.collect {
       case LineCoverageAnnotation        => List("line")
       case ToggleCoverageAnnotation      => List("tgl")
@@ -108,18 +97,13 @@ object VcsExecutive extends BackendExecutive {
       case StructuralCoverageAnnotation  => List("line", "tgl", "branch", "cond")
     }).flatten.distinct match {
       case Nil   => Seq()
->>>>>>> upstream/master
       case flags => Seq("-cm " + flags.mkString("+"))
     }
     val editCommands = compiledAnnotations.collectFirst {
       case CommandEditsFile(fileName) => fileName
     }.getOrElse("")
 
-<<<<<<< HEAD
-    val vcsFlags = moreVcsCFlags ++ coverageFlags
-=======
     val vcsFlags = moreVcsFlags ++ coverageFlags
->>>>>>> upstream/master
 
     assert(
       VerilogToVcs(

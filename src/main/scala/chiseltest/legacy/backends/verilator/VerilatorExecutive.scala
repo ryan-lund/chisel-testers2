@@ -4,11 +4,7 @@ import java.io.{BufferedReader, File, FileReader, FileWriter}
 
 import chiseltest.backends.BackendExecutive
 import chiseltest.internal._
-<<<<<<< HEAD
-import chisel3.{MultiIOModule, assert}
-=======
 import chisel3.{assert, Module}
->>>>>>> upstream/master
 import chisel3.experimental.DataMirror
 import chisel3.stage.{ChiselCircuitAnnotation, ChiselStage}
 import firrtl.annotations.ReferenceTarget
@@ -63,7 +59,7 @@ object VerilatorExecutive extends BackendExecutive {
       s"mv ${highFirrtlPath} ${oldHighFirrtlPath}".!
 
       (new ChiselStage).run(
-        elaboratedAnno :+ CompilerAnnotation(new HighFirrtlCompiler())
+        elaboratedAnno :+ RunFirrtlTransformAnnotation(new HighFirrtlEmitter)
       )
 
       // Diff high FIRRTL and delete old file

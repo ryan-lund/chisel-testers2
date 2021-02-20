@@ -7,11 +7,7 @@ import scala.sys.process._
   * Generates the Module specific verilator harness cpp file for verilator compilation
   */
 object VerilatorCppHarnessGenerator {
-<<<<<<< HEAD
-  def codeGen(dut: MultiIOModule, vcdFilePath: String, targetDir: String): String = {
-=======
   def codeGen(dut: Module, vcdFilePath: String, targetDir: String): String = {
->>>>>>> upstream/master
     val codeBuffer = new StringBuilder
 
     def pushBack(vector: String, pathName: String, width: BigInt) {
