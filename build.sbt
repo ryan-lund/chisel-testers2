@@ -41,9 +41,10 @@ resolvers ++= Seq(
 )
 
 libraryDependencies ++= Seq(
-  "org.scalatest" %% "scalatest" % "3.0.8",
-  "org.scalatest" %% "scalatest" % "3.2.0" % "test",
-  "com.lihaoyi" %% "utest" % "0.6.7"
+  "org.scalatest" %% "scalatest" % "3.2.2",
+  "com.lihaoyi" %% "utest" % "latest.integration",
+  "com.github.plokhotnyuk.jsoniter-scala" %% "jsoniter-scala-core"   % "2.6.4",
+  "com.github.plokhotnyuk.jsoniter-scala" %% "jsoniter-scala-macros" % "2.6.4" % "provided"
 )
 
 testFrameworks += new TestFramework("utest.runner.Framework")
