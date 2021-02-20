@@ -1,13 +1,17 @@
 package chiseltest.legacy.backends.verilator
 
-import chisel3.MultiIOModule
+import chisel3.Module
 import scala.sys.process._
 
 /**
   * Generates the Module specific verilator harness cpp file for verilator compilation
   */
 object VerilatorCppHarnessGenerator {
+<<<<<<< HEAD
   def codeGen(dut: MultiIOModule, vcdFilePath: String, targetDir: String): String = {
+=======
+  def codeGen(dut: Module, vcdFilePath: String, targetDir: String): String = {
+>>>>>>> upstream/master
     val codeBuffer = new StringBuilder
 
     def pushBack(vector: String, pathName: String, width: BigInt) {
@@ -41,8 +45,10 @@ object VerilatorCppHarnessGenerator {
     val dutName = dut.name
     val dutApiClassName = dutName + "_api_t"
     val dutVerilatorClassName = "V" + dutName
-    val verilatorVersion = "verilator --version".!!.split(' ').last.stripLineEnd
-    val verilatorRunFlushCallback = if(verilatorVersion >= "v4.038"){
+    // example version string: Verilator 4.038 2020-07-11 rev v4.038
+    // this will probably break when Verilator hits version 10+, but hopefully we can drop compatibility by then
+    val verilatorVersion = "verilator --version".!!.split(' ')(1).stripLineEnd
+    val verilatorRunFlushCallback = if (verilatorVersion >= "4.038") {
       "Verilated::runFlushCallbacks();\nVerilated::runExitCallbacks();\n"
     } else {
       "Verilated::flushCall();\n"
@@ -71,15 +77,15 @@ class $dutApiClassName: public sim_api_t<VerilatorDataWrapper*> {
         sim_data.signals.clear();
 
 """)
-    inputs.toList foreach {
+    inputs.toList.foreach {
       case (node, name) =>
         // replaceFirst used here in case port name contains the dutName
-        pushBack("inputs", name replaceFirst (dutName, "dut"), node.getWidth)
+        pushBack("inputs", name.replaceFirst(dutName, "dut"), node.getWidth)
     }
-    outputs.toList foreach {
+    outputs.toList.foreach {
       case (node, name) =>
         // replaceFirst used here in case port name contains the dutName
-        pushBack("outputs", name replaceFirst (dutName, "dut"), node.getWidth)
+        pushBack("outputs", name.replaceFirst(dutName, "dut"), node.getWidth)
     }
     pushBack("signals", "dut->reset", 1)
     codeBuffer.append(
