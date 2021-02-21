@@ -8,7 +8,7 @@ import chiseltest.experimental.AsyncResetBlackBoxFactory
 import chiseltest.experimental.TestOptionBuilder._
 import firrtl.{AnnotationSeq, ExecutionOptionsManager}
 import org.scalatest._
-import treadle.{BlackBoxFactoriesAnnotation, HasTreadleSuite}
+import treadle.{BlackBoxFactoriesAnnotation} //, HasTreadleSuite}
 import org.scalatest.freespec.AnyFreeSpec
 
 /** This test uses a deprecated class and method to test backward compatibility
@@ -17,7 +17,7 @@ import org.scalatest.freespec.AnyFreeSpec
   *
   */
 class OptionsBackwardCompatibilityTest extends AnyFreeSpec with ChiselScalatestTester {
-  private val manager = new ExecutionOptionsManager("asyncResetRegTest") with HasTreadleSuite {
+  /*private val manager = new ExecutionOptionsManager("asyncResetRegTest") with HasTreadleSuite {
     treadleOptions = treadleOptions.copy(
       blackBoxFactories = Seq(new AsyncResetBlackBoxFactory)
     )
@@ -34,6 +34,6 @@ class OptionsBackwardCompatibilityTest extends AnyFreeSpec with ChiselScalatestT
         dut.io.out.expect(0.U)
       }
     }
-  }
+  }*/
 }
 

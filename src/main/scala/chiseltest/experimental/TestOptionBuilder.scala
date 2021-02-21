@@ -5,7 +5,7 @@ package chiseltest.experimental
 import chiseltest._
 import chiseltest.internal.{TreadleBackendAnnotation, VerilatorBackendAnnotation}
 import chisel3._
-import treadle.HasTreadleSuite
+//import treadle.HasTreadleSuite
 import firrtl.stage.{CompilerAnnotation, RunFirrtlTransformAnnotation}
 import firrtl.{
   AnnotationSeq,
@@ -29,7 +29,7 @@ package object TestOptionBuilder {
       new x.outer.TestBuilder[T](x.dutGen, x.annotationSeq, x.flags ++ flags)
     }
 
-    @deprecated("Use withAnnotations instead", "a long time ago")
+    /*@deprecated("Use withAnnotations instead", "a long time ago")
     def withExecOptions(manager: ExecutionOptionsManager with HasTreadleSuite): ChiselScalatestTester#TestBuilder[T] = {
       val annos = manager.toAnnotationSeq.map {
         case CompilerAnnotation(compiler) if compiler.isInstanceOf[LowFirrtlCompiler]      => TreadleBackendAnnotation
@@ -43,7 +43,7 @@ package object TestOptionBuilder {
       }
 
       new x.outer.TestBuilder[T](x.dutGen, annos, Array.empty)
-    }
+    }*/
 
     @deprecated("Use withAnnotations instead", "a long time ago")
     def withTesterOptions(opt: TesterOptions): ChiselScalatestTester#TestBuilder[T] = {
