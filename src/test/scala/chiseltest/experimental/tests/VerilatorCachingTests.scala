@@ -5,7 +5,7 @@ import chisel3._
 import chiseltest.tests.{PassthroughModule, StaticModule}
 import chiseltest._
 import chiseltest.experimental.TestOptionBuilder._
-import chiseltest.internal.{VerilatorBackendAnnotation, CachingAnnotation}
+import chiseltest.internal.{CachingAnnotation, VerilatorBackendAnnotation, WriteVcdAnnotation}
 import org.scalatest._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -116,6 +116,15 @@ class VerilatorCachingTests extends AnyFlatSpec with ChiselScalatestTester with 
       c.io.in.poke(43.U)
       c.clock.step()
       c.io.out.expect(43.U)
+    }
+  }
+
+  it should "test waveform generation" in {
+    test(new PassthroughModule(UInt(8.W))).withAnnotations(annos :+ WriteVcdAnnotation) { c =>
+      c.in.poke(0.U)
+      c.out.expect(0.U)
+      c.in.poke(42.U)
+      c.out.expect(42.U)
     }
   }
 }
