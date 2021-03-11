@@ -7,7 +7,7 @@ import scala.sys.process._
   * Generates the Module specific verilator harness cpp file for verilator compilation
   */
 object VerilatorCppHarnessGenerator {
-  def codeGen(dut: Module, vcdFilePath: String, targetDir: String): String = {
+  def codeGen(dut: Module, vcdFilePath: String, coverageDir: String): String = {
     val codeBuffer = new StringBuilder
 
     def pushBack(vector: String, pathName: String, width: BigInt) {
@@ -190,8 +190,8 @@ int main(int argc, char **argv, char **env) {
 #endif
 #if VM_COVERAGE
     VL_PRINTF(\"Writing Coverage..\");
-    Verilated::mkdir("$targetDir/logs");
-    VerilatedCov::write("$targetDir/logs/coverage.dat");
+    Verilated::mkdir("$coverageDir");
+    VerilatedCov::write("$coverageDir/coverage.dat");
 #endif
     delete top;
     exit(0);

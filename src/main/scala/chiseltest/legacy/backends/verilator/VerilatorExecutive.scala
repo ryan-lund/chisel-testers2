@@ -130,7 +130,9 @@ object VerilatorExecutive extends BackendExecutive {
         val command = readFromArray(commandJson.getBytes("UTF-8"))(commandCodec)
 
         // Symlink location of Verilator and Verilog sources for user reference
-        Files.createSymbolicLink(Paths.get(s"${uncachedTargetDir}/sources"), Paths.get(targetDirFile.getAbsolutePath))
+        val sourcePath = s"${uncachedTargetDir}/sources"
+        new File(sourcePath).delete()
+        Files.createSymbolicLink(Paths.get(sourcePath), Paths.get(targetDirFile.getAbsolutePath))
 
         return new VerilatorBackend(dut, portNames, pathsAsData, command)
       } else {
@@ -162,8 +164,9 @@ object VerilatorExecutive extends BackendExecutive {
     val cppHarnessFile = new File(targetDir, cppHarnessFileName)
     val cppHarnessWriter = new FileWriter(cppHarnessFile)
     val vcdFile = new File(uncachedTargetDir, s"${circuit.name}.vcd")
+    val coverageDir = s"${uncachedTargetDir}/logs"
     val emittedStuff =
-      VerilatorCppHarnessGenerator.codeGen(dut, vcdFile.toString, targetDir)
+      VerilatorCppHarnessGenerator.codeGen(dut, vcdFile.toString, coverageDir)
     cppHarnessWriter.append(emittedStuff)
     cppHarnessWriter.close()
 
@@ -246,6 +249,8 @@ object VerilatorExecutive extends BackendExecutive {
       commandWriter.close()
 
       // Symlink location of Verilator and Verilog sources for user reference
+      val sourcePath = s"${uncachedTargetDir}/sources"
+      new File(sourcePath).delete()
       Files.createSymbolicLink(Paths.get(s"${uncachedTargetDir}/sources"), Paths.get(targetDirFile.getAbsolutePath))
     }
 
