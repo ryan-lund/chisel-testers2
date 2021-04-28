@@ -44,7 +44,8 @@ libraryDependencies ++= Seq(
   "org.scalatest" %% "scalatest" % "3.2.2",
   "com.lihaoyi" %% "utest" % "latest.integration",
   "com.github.plokhotnyuk.jsoniter-scala" %% "jsoniter-scala-core"   % "2.6.4",
-  "com.github.plokhotnyuk.jsoniter-scala" %% "jsoniter-scala-macros" % "2.6.4" % "provided"
+  "com.github.plokhotnyuk.jsoniter-scala" %% "jsoniter-scala-macros" % "2.6.4" % "provided",
+  "javax.xml.bind" % "jaxb-api" % "2.3.1"
 )
 
 testFrameworks += new TestFramework("utest.runner.Framework")
